@@ -17,7 +17,8 @@ from pyro.optim import Adam
 # xs[0]     xs[1]             xs[n]
 
 
-class Model(anon.LatentObject):
+class Model(anon.Latent):
+    @anon.checked
     def __call__(self, xs):
         self.mu = Variable(torch.zeros(1))
         self.sigma = anon.param(Variable(torch.ones(1), requires_grad=True))
@@ -29,7 +30,8 @@ class Model(anon.LatentObject):
             self.xs.append(anon.observe(dist.normal, x, self.ys[-1], self.sigma))
 
 
-class Guide(anon.LatentObject):
+class Guide(anon.Latent):
+    @anon.checked
     def __call__(self, xs):
         self.mus = [anon.param(Variable(torch.zeros(1), requires_grad=True)) for _ in range(len(xs))]
         self.sigmas = [anon.param(Variable(torch.ones(1), requires_grad=True)) for _ in range(len(xs))]
