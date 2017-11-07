@@ -105,8 +105,9 @@ class _Latent(object):
     """
     Base class for latent state containers.
     """
-    def __init__(self, address):
+    def __init__(self, address, replace=None):
         super(_Latent, self).__setattr__('_address', address)
+        super(_Latent, self).__setattr__('_replace', replace)
 
 
 class Latent(_Latent):
@@ -122,7 +123,7 @@ class Latent(_Latent):
         if isinstance(value, (sample, param)):
             value = value.bind(address)
         elif type(value) is object:
-            value = Latent(address)
+            value = Latent(address, lambda value: self.__setattr__(name, value))
         elif type(value) is dict:
             value = LatentDict(address, value)
         elif type(value) is list:
@@ -136,9 +137,27 @@ class Latent(_Latent):
             return super(Latent, self).__getattribute__(name)
         except AttributeError:
             address = '{}.{}'.format(self._address, name)
-            value = Latent(address)
+            value = Latent(address, lambda value: self.__setattr__(name, value))
             super(Latent, self).__setattr__(name, value)
             return value
+
+    @functools.wraps(pyro.sample)
+    def sample(self, fn, *args, **kwargs):
+        value = pyro.sample(self._address, fn, *args, **kwargs)
+        self._replace(value)
+        return value
+
+    @functools.wraps(pyro.observe)
+    def observe(self, fn, obs, *args, **kwargs):
+        value = pyro.observe(self._address, fn, obs, *args, **kwargs)
+        self._replace(value)
+        return value
+
+    @functools.wraps(pyro.param)
+    def param(self, *args, **kwargs):
+        value = pyro.param(self._address, *args, **kwargs)
+        self._replace(value)
+        return value
 
     # TODO Make mutation methods safe.
 
@@ -162,7 +181,7 @@ class LatentDict(_Latent, dict):
         if isinstance(value, (sample, param)):
             value = value.bind(address)
         elif type(value) is object:
-            value = Latent(address)
+            value = Latent(address, lambda value: self.__setitem__(key, value))
         elif type(value) is dict:
             value = LatentDict(address, value)
         elif type(value) is list:
@@ -193,7 +212,7 @@ class LatentList(_Latent, list):
         if isinstance(value, (sample, param)):
             value = value.bind(address)
         elif type(value) is object:
-            value = Latent(address)
+            value = Latent(address, lambda value: self.__setitem__(pos, value))
         elif type(value) is dict:
             value = LatentDict(address, value)
         elif type(value) is list:
