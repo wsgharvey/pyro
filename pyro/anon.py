@@ -12,7 +12,7 @@ class sample(object):
 
     def bind(self, name):
         self.name = name
-        return pyro.sample(self, self.fn, *self.args, **self.kwargs)
+        return pyro.sample(name, self.fn, *self.args, **self.kwargs)
 
 
 def observe(fn, obs, *args, **kwargs):
@@ -28,16 +28,16 @@ class param(object):
 
     def bind(self, name):
         self.name = name
-        return pyro.param(self, *self.args, **self.kwargs)
+        return pyro.param(name, *self.args, **self.kwargs)
 
 
 class Latent(object):
     def __init__(self, address=''):
-        self._address = address
+        super(Latent, self).__setattr__('_address', address)
 
     def set_address(self, address):
         assert self._address == ''
-        self._address = address
+        super(Latent, self).__setattr__('_address', address)
 
 
 class LatentObject(Latent):
@@ -54,7 +54,7 @@ class LatentObject(Latent):
         super(LatentObject, self).__setattr__(name, value)
 
 
-class LatentDict(dict, Latent):
+class LatentDict(Latent, dict):
     def __init__(self, address='', raw_value=None):
         super(LatentDict, self).__init__(address)
         if raw_value is not None:
@@ -82,7 +82,7 @@ class LatentDict(dict, Latent):
             return self[key]
 
 
-class LatentList(list, Latent):
+class LatentList(Latent, list):
     def __init__(self, address='', raw_value=None):
         super(LatentList, self).__init__(address)
         if raw_value is not None:
@@ -100,7 +100,7 @@ class LatentList(list, Latent):
             value = LatentList(address, value)
         elif isinstance(value, dict):
             value = LatentDict(address, value)
-        super(LatentDict, self).__setitem__(pos, value)
+        super(LatentList, self).__setitem__(pos, value)
 
     def append(self, value):
         pos = len(self)
