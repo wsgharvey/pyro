@@ -13,21 +13,37 @@ _CHECKING = []
 _PYRO_PENDING = set()  # Set of sample and param objects.
 _PYRO_DONE = set()  # Set of addresses.
 
+# This attempts to disallow a _Latent from storing an unregistered container
+# that might accidentally hold unbound anon.sample or anon.param objects. If
+# this ends up being too restrictive, we might drop this check.
+_ALLOWED_TYPES = (
+    type(None),
+    bool,
+    str,
+    numbers.Number,
+    torch.Tensor,
+    torch.autograd.Variable,
+    np.ndarray,
+)
 
-def checked(fn):
+
+def function(fn):
     """
-    Decorator for model and guide functions to check for safety.
+    Decorator for top-level model and guide functions.
+
+    This adds an initial argument ``latent`` and adds error checking.
     """
 
     @functools.wraps(fn)
     def decorated(*args, **kwargs):
         if _CHECKING:
-            raise RuntimeError('@checked functions do not support recursion')
+            raise RuntimeError('@functions do not support recursion')
         _CHECKING.append(None)
         _PYRO_PENDING.clear()
         _PYRO_DONE.clear()
+        latent = Latent('latent')
         try:
-            result = fn(*args, **kwargs)
+            result = fn(latent, *args, **kwargs)
         finally:
             _CHECKING.pop()
         if _PYRO_PENDING:
@@ -39,6 +55,7 @@ def checked(fn):
 
 # Deferred sample site, will not run until stored in a _Latent.
 class sample(object):
+    __slots__ = ['fn', 'args', 'kwargs', 'name']
     __doc__ = pyro.sample.__doc__
 
     def __init__(self, fn, *args, **kwargs):
@@ -65,6 +82,7 @@ def observe(fn, obs, *args, **kwargs):
 
 # Deferred param site, will not run until stored in a _Latent.
 class param(object):
+    __slots__ = ['args', 'kwargs', 'name']
     __doc__ = pyro.sample.__doc__
 
     def __init__(self, *args, **kwargs):
@@ -85,25 +103,8 @@ class _Latent(object):
     """
     Base class for latent state containers.
     """
-    def __init__(self, address='latent'):
+    def __init__(self, address):
         super(_Latent, self).__setattr__('_address', address)
-
-    def set_address(self, address):
-        assert self._address == 'latent'
-        super(_Latent, self).__setattr__('_address', address)
-
-
-# This attempts to disallow a _Latent from storing an unregistered container
-# that might accidentally hold unbound anon.sample or anon.param objects. If
-# this ends up being too restrictive, we might drop this check.
-_ALLOWED_TYPES = (
-    type(None),
-    str,
-    numbers.Number,
-    torch.Tensor,
-    torch.autograd.Variable,
-    np.ndarray,
-)
 
 
 class Latent(_Latent):
@@ -116,9 +117,7 @@ class Latent(_Latent):
         if _CHECKING:
             if address in _PYRO_DONE:
                 raise RuntimeError('Cannot overwrite {}'.format(address))
-        if isinstance(value, _Latent):
-            value.set_address(address)
-        elif isinstance(value, (sample, param)):
+        if isinstance(value, (sample, param)):
             value = value.bind(address)
             if _CHECKING:
                 _PYRO_DONE.add(address)
@@ -130,6 +129,15 @@ class Latent(_Latent):
             raise TypeError('Latent cannot store objects of type {}'.format(type(value)))
         super(Latent, self).__setattr__(name, value)
 
+    def __getattribute__(self, name):
+        try:
+            return super(Latent, self).__getattribute__(name)
+        except AttributeError:
+            address = '{}.{}'.format(self._address, name)
+            value = Latent(address)
+            super(Latent, self).__setattr__(name, value)
+            return value
+
     # TODO Make mutation methods safe.
 
 
@@ -138,21 +146,18 @@ class LatentDict(_Latent, dict):
     Dict-like object to hold latent state.
     """
 
-    def __init__(self, address='latent', raw_value=None):
+    def __init__(self, address, items):
         super(LatentDict, self).__init__(address)
-        if raw_value is not None:
-            assert not isinstance(raw_value, _Latent)
-            for key, value in raw_value:
-                self[key] = value
+        assert isinstance(items, dict) and not isinstance(items, _Latent)
+        for key, value in items:
+            self[key] = value
 
     def __setitem__(self, key, value):
         address = '{}[{:r}]'.format(self._address, key)
         if _CHECKING:
             if address in _PYRO_DONE:
                 raise RuntimeError('Cannot overwrite {}'.format(address))
-        if isinstance(value, _Latent):
-            value.set_address(address)
-        elif isinstance(value, (sample, param)):
+        if isinstance(value, (sample, param)):
             value = value.bind(address)
             if _CHECKING:
                 _PYRO_DONE.add(key)
@@ -164,13 +169,6 @@ class LatentDict(_Latent, dict):
             raise TypeError('LatentDict cannot store objects of type {}'.format(type(value)))
         super(LatentDict, self).__setitem__(key, value)
 
-    def setdefault(self, key, value):
-        try:
-            return self[key]
-        except KeyError:
-            self[key] = value
-            return self[key]
-
     # TODO Make mutation methods safe.
 
 
@@ -179,21 +177,18 @@ class LatentList(_Latent, list):
     List-like object to hold latent state.
     """
 
-    def __init__(self, address='latent', raw_value=None):
+    def __init__(self, address, values):
         super(LatentList, self).__init__(address)
-        if raw_value is not None:
-            assert not isinstance(raw_value, _Latent)
-            for item in raw_value:
-                self.append(item)
+        assert isinstance(values, list) and not isinstance(values, _Latent)
+        for value in values:
+            self.append(value)
 
     def __setitem__(self, pos, value):
         address = '{}[{}]'.format(self._address, pos)
         if _CHECKING:
             if address in _PYRO_DONE:
                 raise RuntimeError('Cannot overwrite {}'.format(address))
-        if isinstance(value, _Latent):
-            value.set_address(address)
-        elif isinstance(value, (sample, param)):
+        if isinstance(value, (sample, param)):
             value = value.bind(address)
             if _CHECKING:
                 _PYRO_DONE.add(address)
