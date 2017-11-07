@@ -11,7 +11,7 @@ import pyro
 # Optional safety devices.
 _CHECKING = []
 _PYRO_PENDING = set()  # Set of sample and param objects.
-_PYRO_DONE = set()  # Set of addresses.
+_PYRO_BOUND = set()  # Set of addresses.
 
 # This attempts to disallow a _Latent from storing an unregistered container
 # that might accidentally hold unbound anon.sample or anon.param objects. If
@@ -40,14 +40,14 @@ def function(fn):
             raise RuntimeError('@functions do not support recursion')
         _CHECKING.append(None)
         _PYRO_PENDING.clear()
-        _PYRO_DONE.clear()
+        _PYRO_BOUND.clear()
         latent = Latent('latent')
         try:
             result = fn(latent, *args, **kwargs)
         finally:
             _CHECKING.pop()
         if _PYRO_PENDING:
-            raise RuntimeError('\n'.join(['Unassigned sites:'] + list(map(str, _PYRO_PENDING))))
+            raise RuntimeError('\n'.join(['Unbound sites:'] + list(map(str, _PYRO_PENDING))))
         return result
 
     return decorated
@@ -55,7 +55,7 @@ def function(fn):
 
 # Deferred sample site, will not run until stored in a _Latent.
 class sample(object):
-    __slots__ = ['fn', 'args', 'kwargs', 'name']
+    __slots__ = ['fn', 'args', 'kwargs', 'address']
     __doc__ = pyro.sample.__doc__
 
     def __init__(self, fn, *args, **kwargs):
@@ -64,13 +64,14 @@ class sample(object):
         self.fn = fn
         self.args = args
         self.kwargs = kwargs
-        self.name = None
+        self.address = None
 
-    def bind(self, name):
+    def bind(self, address):
         if _CHECKING:
             _PYRO_PENDING.remove(self)
-        self.name = name
-        return pyro.sample(name, self.fn, *self.args, **self.kwargs)
+            _PYRO_BOUND.add(address)
+        self.address = address
+        return pyro.sample(address, self.fn, *self.args, **self.kwargs)
 
 
 # Deferred observe site, will not run until stored in a _Latent.
@@ -82,7 +83,7 @@ def observe(fn, obs, *args, **kwargs):
 
 # Deferred param site, will not run until stored in a _Latent.
 class param(object):
-    __slots__ = ['args', 'kwargs', 'name']
+    __slots__ = ['args', 'kwargs', 'address']
     __doc__ = pyro.sample.__doc__
 
     def __init__(self, *args, **kwargs):
@@ -90,13 +91,14 @@ class param(object):
             _PYRO_PENDING.add(self)
         self.args = args
         self.kwargs = kwargs
-        self.name = None
+        self.address = None
 
-    def bind(self, name):
+    def bind(self, address):
         if _CHECKING:
             _PYRO_PENDING.remove(self)
-        self.name = name
-        return pyro.param(name, *self.args, **self.kwargs)
+            _PYRO_BOUND.add(address)
+        self.address = address
+        return pyro.param(address, *self.args, **self.kwargs)
 
 
 class _Latent(object):
@@ -115,16 +117,16 @@ class Latent(_Latent):
     def __setattr__(self, name, value):
         address = '{}.{}'.format(self._address, name)
         if _CHECKING:
-            if address in _PYRO_DONE:
+            if address in _PYRO_BOUND:
                 raise RuntimeError('Cannot overwrite {}'.format(address))
         if isinstance(value, (sample, param)):
             value = value.bind(address)
-            if _CHECKING:
-                _PYRO_DONE.add(address)
-        elif isinstance(value, list):
-            value = LatentList(address, value)
-        elif isinstance(value, dict):
+        elif type(value) is object:
+            value = Latent(address)
+        elif type(value) is dict:
             value = LatentDict(address, value)
+        elif type(value) is list:
+            value = LatentList(address, value)
         elif not isinstance(value, _ALLOWED_TYPES):
             raise TypeError('Latent cannot store objects of type {}'.format(type(value)))
         super(Latent, self).__setattr__(name, value)
@@ -148,23 +150,23 @@ class LatentDict(_Latent, dict):
 
     def __init__(self, address, items):
         super(LatentDict, self).__init__(address)
-        assert isinstance(items, dict) and not isinstance(items, _Latent)
+        assert type(items) is dict
         for key, value in items:
             self[key] = value
 
     def __setitem__(self, key, value):
         address = '{}[{:r}]'.format(self._address, key)
         if _CHECKING:
-            if address in _PYRO_DONE:
+            if address in _PYRO_BOUND:
                 raise RuntimeError('Cannot overwrite {}'.format(address))
         if isinstance(value, (sample, param)):
             value = value.bind(address)
-            if _CHECKING:
-                _PYRO_DONE.add(key)
-        elif isinstance(value, list):
-            value = LatentList(address, value)
-        elif isinstance(value, dict):
+        elif type(value) is object:
+            value = Latent(address)
+        elif type(value) is dict:
             value = LatentDict(address, value)
+        elif type(value) is list:
+            value = LatentList(address, value)
         elif not isinstance(value, _ALLOWED_TYPES):
             raise TypeError('LatentDict cannot store objects of type {}'.format(type(value)))
         super(LatentDict, self).__setitem__(key, value)
@@ -179,23 +181,23 @@ class LatentList(_Latent, list):
 
     def __init__(self, address, values):
         super(LatentList, self).__init__(address)
-        assert isinstance(values, list) and not isinstance(values, _Latent)
+        assert type(values) is list
         for value in values:
             self.append(value)
 
     def __setitem__(self, pos, value):
         address = '{}[{}]'.format(self._address, pos)
         if _CHECKING:
-            if address in _PYRO_DONE:
+            if address in _PYRO_BOUND:
                 raise RuntimeError('Cannot overwrite {}'.format(address))
         if isinstance(value, (sample, param)):
             value = value.bind(address)
-            if _CHECKING:
-                _PYRO_DONE.add(address)
-        elif isinstance(value, list):
-            value = LatentList(address, value)
-        elif isinstance(value, dict):
+        elif type(value) is object:
+            value = Latent(address)
+        elif type(value) is dict:
             value = LatentDict(address, value)
+        elif type(value) is list:
+            value = LatentList(address, value)
         elif not isinstance(value, _ALLOWED_TYPES):
             raise TypeError('LatentList cannot store objects of type {}'.format(type(value)))
         super(LatentList, self).__setitem__(pos, value)
