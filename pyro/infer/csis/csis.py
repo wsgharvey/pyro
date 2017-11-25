@@ -18,7 +18,7 @@ class CSIS(object):
                  **kwargs):
         self.model = model
         self.optim = optim
-        self.inference = Inference()
+        self.inference = Inference(model)
 
     def evaluate_loss(self, *args, **kwargs):
         """
@@ -27,10 +27,12 @@ class CSIS(object):
 
         Evaluate the loss function. Any args or kwargs are passed to the model and guide.
         """
-        return self.artifact.loss(self.model, self.guide, *args, **kwargs)
+        # return self.artifact.loss(self.model, self.guide, *args, **kwargs)
+        raise NotImplementedError
 
     def compile(self,
                 n_steps,
+                num_particles=8,
                 *args,
                 **kwargs):
         """
@@ -40,7 +42,8 @@ class CSIS(object):
         Take a gradient step on the loss function
         """
         return self.inference.compile(n_steps=n_steps,
-                                      optim=self.optim)
+                                      optim=self.optim,
+                                      num_particles=num_particles)
 
     def get_posterior(num_samples=None):
         """
@@ -49,5 +52,5 @@ class CSIS(object):
         returns a pyro `posterior` object which allows the creation of a `marginal` object
         """
         return Importance(model=self.model,
-                          guide=self.artifact
+                          guide=self.inference.artifact,
                           num_samples=num_samples)
