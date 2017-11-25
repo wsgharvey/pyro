@@ -10,26 +10,37 @@ class Inference(object):
         object which provides functions to compile inference and draw samples
         from the artifact
     """
-    def __init__(self):
-        self.artifact = Artifact()
-        self.loss = Loss()
+    def __init__(self,
+                 model):
+        self.model = model
+        self.guide = Artifact()
 
     def compile(self,
                 n_steps,
-                optim):
+                optim,
+                num_particles,
+                *args,
+                **kwargs):
         """
             trains the artifact to improve predictions
         """
+        self.loss = Loss(num_particles=num_particles)
+
         # TODO: find a way to let optim be initialised by user
-        optim = optim(self.artifact.parameters(), lr=0.001)
+        optim = optim(self.guide.parameters())
         optim.zero_grad()
 
-        for _ in n_steps:
-            training_loss = self.loss.loss_and_grads()
-
+        for _ in range(n_steps):
+            training_loss = self.loss.loss_and_grads(self.model,
+                                                     self.guide,
+                                                     *args,
+                                                     **kwargs)
+            print(training_loss)
             optim.step()
 
             optim.zero_grad()
+
+        return training_loss
 
     def posterior_samples(self):
         """

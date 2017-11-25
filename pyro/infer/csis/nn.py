@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import pyro
+import pyro.distributions as dist
 
 import torch
 import torch.nn as nn
@@ -8,7 +9,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 
-class Artifact(nn.module):
+class Artifact(nn.Module):
     def __init__(self):
         super(Artifact, self).__init__()
         self.pool = nn.MaxPool2d(5, stride=5)
@@ -16,8 +17,9 @@ class Artifact(nn.module):
         self.fcn1 = nn.Linear(1600, 10)
         self.fcn2 = nn.Linear(10, 1)
 
-    def forward(self, images):
-        x = images.view(-1, 3, 200, 200)
+    def forward(self, observed_image=None):
+        assert observed_image is not None
+        x = observed_image.view(-1, 3, 200, 200)
         x = self.pool(x)
         x = F.relu(self.conv(x))
         x = x.view(-1, 1600)
@@ -26,4 +28,7 @@ class Artifact(nn.module):
         sig = nn.Sigmoid()
         x = 10 * sig(x)     # some may say that this makes it very specific to the problem at hand
         x = x.view(-1)
-        return x
+        pyro.sample("bar_height",
+                    dist.normal,
+                    x,
+                    Variable(torch.Tensor([0.1])))

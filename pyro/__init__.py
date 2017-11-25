@@ -74,7 +74,7 @@ def sample(name, fn, *args, **kwargs):
             "done": False,
             "stop": False,
         }
-        # handle observation
+        # handle observation)
         if obs is not None:
             msg["value"] = obs
             msg["is_observed"] = True
