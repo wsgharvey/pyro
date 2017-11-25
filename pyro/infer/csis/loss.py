@@ -6,6 +6,7 @@ from pyro.distributions.util import torch_zeros_like
 from pyro.infer.util import torch_backward
 from pyro.poutine.util import prune_subsample_sites
 from pyro.util import check_model_guide_match
+from pyro.infer.csis.model_traces import get_trace_from_prior
 
 import numpy as np
 
@@ -27,6 +28,8 @@ class Loss(object):
         """ runs the model to generate traces
             then runs the guide against each trace and computes the loss
         """
+        print(get_trace_from_prior(model, guide, *args, **kwargs))
+
         for _ in range(self.num_particles):
 
             # take a trace from the model and then take a trace from the guide with the samples constrained to be the same
