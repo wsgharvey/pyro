@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import pyro
-from pyro.infer.csis.nn import Artifact
+from pyro.infer.csis.inference import Inference
 from pyro.infer.importance import Importance
 
 
@@ -18,7 +18,7 @@ class CSIS(object):
                  **kwargs):
         self.model = model
         self.optim = optim
-        self.artifact = Artifact()
+        self.inference = Inference()
 
     def evaluate_loss(self, *args, **kwargs):
         """
@@ -27,7 +27,7 @@ class CSIS(object):
 
         Evaluate the loss function. Any args or kwargs are passed to the model and guide.
         """
-        return self.loss(self.model, self.guide, *args, **kwargs)
+        return self.artifact.loss(self.model, self.guide, *args, **kwargs)
 
     def compile(self,
                 n_steps,
@@ -39,9 +39,8 @@ class CSIS(object):
 
         Take a gradient step on the loss function
         """
-        blah
-
-        return loss
+        return self.inference.compile(n_steps=n_steps,
+                                      optim=self.optim)
 
     def get_posterior(num_samples=None):
         """
