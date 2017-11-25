@@ -31,7 +31,7 @@ class CSIS(object):
         raise NotImplementedError
 
     def compile(self,
-                n_steps,
+                num_steps,
                 num_particles=8,
                 *args,
                 **kwargs):
@@ -41,7 +41,7 @@ class CSIS(object):
 
         Take a gradient step on the loss function
         """
-        return self.inference.compile(n_steps=n_steps,
+        return self.inference.compile(num_steps=num_steps,
                                       optim=self.optim,
                                       num_particles=num_particles)
 
