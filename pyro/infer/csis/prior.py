@@ -4,7 +4,12 @@ import pyro
 import pyro.poutine as poutine
 
 
-def get_trace_from_prior(model, guide, *args, **kwargs):
+def sample_from_prior(model, guide, *args, **kwargs):
+    """
+        returns traces from the prior with values sampled at observation_nodes
+
+        TODO: find a good home for this functions
+    """
 
     model_trace = poutine.trace(model).get_trace(*args, **kwargs)
 
