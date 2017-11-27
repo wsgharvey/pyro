@@ -13,34 +13,34 @@ class Inference(object):
     """
     def __init__(self,
                  model,
-                 validation_size=12,
+                 valid_size=12,
                  *args,
                  **kwargs):
         self.model = model
         self.guide = Artifact()
         self.args = args
         self.kwargs = kwargs
-        self.validation_batch = [sample_from_prior(self.model,
-                                                   self.guide,
-                                                   *self.args,
-                                                   **self.kwargs)
-                                 for _ in range(validation_size)]
+        self.valid_batch = [sample_from_prior(self.model,
+                                              self.guide,
+                                              *self.args,
+                                              **self.kwargs)
+                            for _ in range(valid_size)]
         self.iterations = 0
         self.training_losses = []
-        self.validation_losses = []
+        self.valid_losses = []
 
     def compile(self,
                 num_steps,
                 optim,
                 num_particles,
-                validation_frequency=10):
+                valid_frequency=10):
         """
             trains the artifact to improve predictions
         """
         self.loss = Loss(num_particles=num_particles)
 
         # TODO: find a way to let optim be initialised by user
-        optim = optim(self.guide.parameters(), lr=0.1)
+        optim = optim(self.guide.parameters(), lr=1e-6)
         optim.zero_grad()
 
         for _ in range(num_steps):
@@ -55,18 +55,24 @@ class Inference(object):
 
             print("LOSS: {}".format(training_loss))
             self.training_losses.append(training_loss)
-            if self.iterations % validation_frequency == 0:
-                valid_loss = self.loss.validation_loss(self.validation_batch,
+            if self.iterations % valid_frequency == 0:
+                valid_loss = self.loss.validation_loss(self.valid_batch,
                                                        self.guide,
                                                        *self.args,
                                                        **self.kwargs)
+                self.valid_losses.append(valid_loss)
                 print("VALIDATION LOSS IS {}".format(valid_loss))
-
             self.iterations += 1
 
         return training_loss
 
-    def posterior_samples(self):
+    def get_posterior(self, num_samples):
         """
             returns weighted samples from the posterior
         """
+        # guide_trace = poutine.trace(self.guide).get_trace(*args, **kwargs)
+        # model_trace = poutine.trace(poutine.replay(self.model, guide_trace)).get_trace(*args, **kwargs)
+        # weight = model_trace.log_pdf()
+        return pyro.infer.Importance(self.model,
+                                     self.guide,
+                                     num_samples)
