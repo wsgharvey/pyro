@@ -76,7 +76,7 @@ class Loss(object):
         for model_trace in validation_traces:
             guide_trace = self._get_matched_trace(model_trace, guide, *args, **kwargs)
 
-            particle_loss = -guide_trace.log_pdf() / self.num_particles
+            particle_loss = -guide_trace.log_pdf() / len(validation_traces)
 
             loss += particle_loss.data.numpy()[0]
 

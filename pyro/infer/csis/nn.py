@@ -15,7 +15,7 @@ class Artifact(nn.Module):
         self.pool = nn.MaxPool2d(5, stride=5)
         self.conv = nn.Conv2d(3, 1, 1)  # blends the three RGB layers together
         self.fcn1 = nn.Linear(1600, 10)
-        self.fcn2 = nn.Linear(10, 1)
+        self.fcn2 = nn.Linear(10, 2)
 
     def forward(self, observed_image=None):
         assert observed_image is not None
@@ -25,10 +25,13 @@ class Artifact(nn.Module):
         x = x.view(-1, 1600)
         x = F.relu(self.fcn1(x))
         x = self.fcn2(x)
-        sig = nn.Sigmoid()
-        x = 10 * sig(x)     # some may say that this makes it very specific to the problem at hand
-        x = x.view(-1)
+        # sig = nn.Sigmoid()
+        # x = 10 * sig(x)     # some may say that this makes it very specific to the problem at hand
+        x = x.view(-1, 2)
+        mean = x[:, 0]
+        # log_sigma = x[:, 1]
+        # sigma = log_sigma.exp()
         pyro.sample("bar_height",
                     dist.normal,
-                    x,
+                    mean,
                     Variable(torch.Tensor([0.1])))
