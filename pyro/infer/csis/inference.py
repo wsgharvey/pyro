@@ -13,11 +13,15 @@ class Inference(object):
     """
     def __init__(self,
                  model,
+                 guide,
                  valid_size=12,
                  *args,
                  **kwargs):
         self.model = model
-        self.guide = Artifact()
+        if guide is None:
+            self.guide = Artifact()
+        else:
+            self.guide = guide
         self.args = args
         self.kwargs = kwargs
         self.valid_batch = [sample_from_prior(self.model,
@@ -40,7 +44,8 @@ class Inference(object):
         self.loss = Loss(num_particles=num_particles)
 
         # TODO: find a way to let optim be initialised by user
-        optim = optim(self.guide.parameters(), lr=1e-6)
+        # or at least let learning rate be specified outside!
+        optim = optim(self.guide.parameters(), lr=1e-3)
         optim.zero_grad()
 
         for _ in range(num_steps):
@@ -61,7 +66,7 @@ class Inference(object):
                                                        *self.args,
                                                        **self.kwargs)
                 self.valid_losses.append(valid_loss)
-                print("VALIDATION LOSS IS {}".format(valid_loss))
+                print(" "*50, "VALIDATION LOSS IS {}".format(valid_loss))
             self.iterations += 1
 
         return training_loss
