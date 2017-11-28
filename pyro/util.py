@@ -39,17 +39,36 @@ def get_tensor_data(t):
     return t
 
 
+def _custom_tensor_hash(t):
+    """
+    returns a hash of t if t is a torch.Tensor or Variable
+
+    otherwise returns t
+    """
+    if isinstance(t, Variable):
+        t = t.data
+    if isinstance(t, torch.Tensor):
+        # sum the hash of each element
+        t = sum(map(hash, t.view(-1)))
+    return t
+
+
 def memoize(fn):
     """
     https://stackoverflow.com/questions/1988804/what-is-memoization-and-how-can-i-use-it-in-python
     unbounded memoize
     alternate in py3: https://docs.python.org/3/library/functools.html
     lru_cache
+
+    altered to use custom hash function on Tensors since the predefined one
+    gives different hash for equal Tensors
     """
     mem = {}
 
     def _fn(*args, **kwargs):
         kwargs_tuple = _dict_to_tuple(kwargs)
+        kwargs_tuple = tuple([(name, _custom_tensor_hash(value)) for name, value in kwargs_tuple])
+        key = (args, (kwargs_tuple))
         if (args, kwargs_tuple) not in mem:
             mem[(args, kwargs_tuple)] = fn(*args, **kwargs)
         return mem[(args, kwargs_tuple)]
