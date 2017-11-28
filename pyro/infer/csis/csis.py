@@ -3,6 +3,9 @@ from __future__ import absolute_import, division, print_function
 import pyro
 from pyro.infer.csis.inference import Inference
 from pyro.infer.importance import Importance
+from pyro.infer.csis.prior import sample_from_prior
+
+import torch
 
 
 class CSIS(object):
@@ -13,22 +16,14 @@ class CSIS(object):
     """
     def __init__(self,
                  model,
-                 optim,
+                 guide=None,
+                 optim=torch.optim.Adam,
                  *args,
                  **kwargs):
         self.model = model
         self.optim = optim
-        self.inference = Inference(model)
-
-    def evaluate_loss(self, *args, **kwargs):
-        """
-        :returns: estimate of the loss
-        :rtype: float
-
-        Evaluate the loss function. Any args or kwargs are passed to the model and guide.
-        """
-        # return self.artifact.loss(self.model, self.guide, *args, **kwargs)
-        raise NotImplementedError
+        self.inference = Inference(model,
+                                   guide=guide)
 
     def compile(self,
                 num_steps,
@@ -45,12 +40,17 @@ class CSIS(object):
                                       optim=self.optim,
                                       num_particles=num_particles)
 
-    def get_posterior(num_samples=None):
+    def sample_from_prior(self, *args, **kwargs):
+        while True:
+            yield sample_from_prior(self.model,
+                                    self.inference.guide,
+                                    *args,
+                                    **kwargs)
+
+    def get_posterior(self, num_samples):
         """
         :num_samples: number of samples to use to approximate posterior
 
         returns a pyro `posterior` object which allows the creation of a `marginal` object
         """
-        return Importance(model=self.model,
-                          guide=self.inference.artifact,
-                          num_samples=num_samples)
+        return self.inference.get_posterior(num_samples)

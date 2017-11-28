@@ -6,7 +6,7 @@ import pyro.poutine as poutine
 
 def sample_from_prior(model, guide, *args, **kwargs):
     """
-        returns traces from the prior with values sampled at observation_nodes
+        returns traces from the prior with values sampled at observes
 
         TODO: find a good home for this functions
     """
@@ -14,7 +14,7 @@ def sample_from_prior(model, guide, *args, **kwargs):
     model_trace = poutine.trace(model).get_trace(*args, **kwargs)
 
     for name in model_trace.observation_nodes:
-        # replace the value of each observe with the sampled value
+        # replace the value of each observe with a sampled value
         obs_dist = model_trace.nodes[name]["fn"]
         obs_args = model_trace.nodes[name]["args"]
         obs_kwargs = model_trace.nodes[name]["kwargs"]
