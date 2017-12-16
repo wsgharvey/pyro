@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+import warnings
+
 import pyro
 import pyro.poutine as poutine
 from pyro.distributions.util import torch_zeros_like

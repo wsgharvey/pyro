@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import pyro
 from pyro.infer.csis.inference import Inference
 from pyro.infer.importance import Importance
-from pyro.infer.csis.prior import sample_from_prior
+from pyro.infer.csis import prior
 
 import torch
 
@@ -16,7 +16,7 @@ class CSIS(object):
     """
     def __init__(self,
                  model,
-                 guide=None,
+                 guide,
                  optim=torch.optim.Adam,
                  *args,
                  **kwargs):
@@ -41,11 +41,10 @@ class CSIS(object):
                                       num_particles=num_particles)
 
     def sample_from_prior(self, *args, **kwargs):
-        while True:
-            yield sample_from_prior(self.model,
-                                    self.inference.guide,
-                                    *args,
-                                    **kwargs)
+        return prior.sample_from_prior(self.model,
+                                       self.inference.guide,
+                                       *args,
+                                       **kwargs)
 
     def get_posterior(self, num_samples):
         """

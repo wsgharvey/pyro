@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 import pyro
-from pyro.infer.csis.nn import Artifact
 from pyro.infer.csis.loss import Loss
 from pyro.infer.csis.prior import sample_from_prior
 
@@ -18,10 +17,7 @@ class Inference(object):
                  *args,
                  **kwargs):
         self.model = model
-        if guide is None:
-            self.guide = Artifact()
-        else:
-            self.guide = guide
+        self.guide = guide
         self.args = args
         self.kwargs = kwargs
         self.valid_batch = [sample_from_prior(self.model,
@@ -42,10 +38,6 @@ class Inference(object):
             trains the artifact to improve predictions
         """
         self.loss = Loss(num_particles=num_particles)
-
-        # TODO: find a way to let optim be initialised by user
-        # or at least let learning rate be specified outside!
-        optim = optim(self.guide.parameters(), lr=1e-3)
         optim.zero_grad()
 
         for _ in range(num_steps):
@@ -75,9 +67,6 @@ class Inference(object):
         """
             returns weighted samples from the posterior
         """
-        # guide_trace = poutine.trace(self.guide).get_trace(*args, **kwargs)
-        # model_trace = poutine.trace(poutine.replay(self.model, guide_trace)).get_trace(*args, **kwargs)
-        # weight = model_trace.log_pdf()
         return pyro.infer.Importance(self.model,
                                      self.guide,
                                      num_samples)
