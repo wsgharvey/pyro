@@ -42,7 +42,6 @@ class CSIS(object):
 
     def sample_from_prior(self, *args, **kwargs):
         return prior.sample_from_prior(self.model,
-                                       self.inference.guide,
                                        *args,
                                        **kwargs)
 
