@@ -4,7 +4,7 @@ import pyro
 import pyro.poutine as poutine
 
 
-def sample_from_prior(model, guide, *args, **kwargs):
+def sample_from_prior(model, *args, **kwargs):
     """
         returns traces from the prior with values sampled at observes
 
