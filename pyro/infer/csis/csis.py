@@ -1,54 +1,108 @@
 from __future__ import absolute_import, division, print_function
 
 import pyro
-from pyro.infer.csis.inference import Inference
 from pyro.infer.importance import Importance
-from pyro.infer.csis import prior
+from pyro.infer.csis.util import sample_from_prior
+from pyro.infer.csis.loss import Loss
 
 import torch
 
 
-class CSIS(object):
-    """
-    :param model: the model (callable containing Pyro primitives)
-
-    An object for performing compiled inference: see paper
-    """
+class CSIS(Importance):
     def __init__(self,
                  model,
                  guide,
-                 optim=torch.optim.Adam,
-                 *args,
-                 **kwargs):
-        self.model = model
-        self.optim = optim
-        self.inference = Inference(model,
-                                   guide=guide)
+                 num_samples):
+        """
+        Constructor
+
+        the entered *args and **kwargs are used during compilation
+        """
+        super(CSIS, self).__init__(model, guide, num_samples)
+        self.model_args_set = False
+        self.compiler_args_set = False
+        self.compiler_initiated = False
+
+    def set_model_args(self, *args, **kwargs):
+        """
+        set the arguments to be used when compiling the model
+
+        I think these should default to None in the initialiser
+        """
+        self.model_args = args
+        self.model_kwargs = kwargs
+        self.model_args_set = True
+
+    def set_compiler_args(self,
+                          valid_size=10,
+                          valid_frequency=10,
+                          num_particles=10):
+        """
+        set the compiler properties
+        """
+        self.valid_size = valid_size
+        self.valid_frequency = valid_frequency
+        self.num_particles = num_particles
+        self.compiler_args_set = True
+
+    def _init_compiler(self):
+        """
+        internal function to create validation batch etc.
+        """
+        if not self.model_args_set:
+            raise ValueError("Must set model arguments before compiling")
+
+        if not self.compiler_args_set:
+            self.set_compiler_args()
+
+        self.valid_batch = [sample_from_prior(self.model,
+                                              *self.model_args,
+                                              **self.model_kwargs)
+                            for _ in range(self.valid_size)]
+        self.iterations = 0
+        self.training_losses = []
+        self.valid_losses = []
+        self.compiler_initiated = True
 
     def compile(self,
-                num_steps,
-                num_particles=8,
-                *args,
-                **kwargs):
+                optim,
+                num_steps):
         """
-        :returns: estimate of the loss
-        :rtype: float
-
-        Take a gradient step on the loss function
+        :returns: None
+        Does some training steps
         """
-        return self.inference.compile(num_steps=num_steps,
-                                      optim=self.optim,
-                                      num_particles=num_particles)
+        if not self.compiler_initiated:
+            self._init_compiler()
 
-    def sample_from_prior(self, *args, **kwargs):
-        return prior.sample_from_prior(self.model,
-                                       *args,
-                                       **kwargs)
+        loss = Loss(num_particles=self.num_particles,
+                    args=self.model_args,
+                    kwargs=self.model_kwargs)
+        optim.zero_grad()
 
-    def get_posterior(self, num_samples):
+        for _ in range(num_steps):
+            optim.zero_grad()
+            training_loss = loss.loss(self.model,
+                                      self.guide,
+                                      grads=True)
+            optim.step()
+
+            print("LOSS: {}".format(training_loss))
+            self.training_losses.append(training_loss)
+            if self.iterations % self.valid_frequency == 0:
+                valid_loss = loss.loss(self.model,
+                                       self.guide,
+                                       grads=False,
+                                       batch=self.valid_batch)
+                self.valid_losses.append(valid_loss)
+                print(" "*50, "VALIDATION LOSS IS {}".format(valid_loss))
+            self.iterations += 1
+
+    def sample_from_prior(self):
         """
-        :num_samples: number of samples to use to approximate posterior
-
-        returns a pyro `posterior` object which allows the creation of a `marginal` object
+        returns a trace sampled from the prior, without coniditioning
+        - values at observe statements are also randomly sampled from the
+          distribution
         """
-        return self.inference.get_posterior(num_samples)
+        return sample_from_prior(self.model,
+                                 *self.model_args,
+                                 **self.model_kwargs)
