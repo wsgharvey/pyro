@@ -8,9 +8,17 @@ from pyro.distributions.util import torch_zeros_like
 from pyro.infer.util import torch_backward
 from pyro.poutine.util import prune_subsample_sites
 from pyro.util import check_model_guide_match
-from pyro.infer.csis.prior import sample_from_prior
+from pyro.infer.csis.util import sample_from_prior
 
 import numpy as np
+
+"""
+should provide methods to calculate loss over 1 - a number of random draws from p
+                            2 - a provided batch of traces
+and either calculate gradients or not bother
+
+probably fine how it is unless it can be made a little neater - I think this functionality could be combined into one overall loss function
+"""
 
 
 class Loss(object):
@@ -19,12 +27,18 @@ class Loss(object):
     compilation
     """
     def __init__(self,
+                 args,
+                 kwargs,
                  num_particles):
         """
         :num_particles: the number of particles to use for estimating the loss
         """
+        # TODO: maybe put model and guide in __init__
+        # put args/kwargs here too?
         super(Loss, self).__init__()
         self.num_particles = num_particles
+        self.args = args
+        self.kwargs = kwargs
 
     def _get_matched_trace(self, model_trace, guide, *args, **kwargs):
         """
@@ -43,43 +57,37 @@ class Loss(object):
 
         return guide_trace
 
-    def loss_and_grads(self, model, guide, *args, **kwargs):
+    def loss(self,
+             model,
+             guide,
+             grads=False,
+             batch=None):
         """
         :returns: returns an estimate of the loss (expectation over p of -log q)
         :rtype: float
 
-        Performs backward on the loss. Num_particle many samples are used to form the estimators.
+        If a batch is provided, the loss is estimated using these traces
+        Otherwise, num_samples traces are generated
+
+        If grads is True, will also calculate gradients
         """
+        if batch is None:
+            batch = (sample_from_prior(model, *self.args, **self.kwargs) for _ in range(self.num_particles))
+            batch_size = self.num_particles
+        else:
+            batch_size = len(batch)
+
         loss = 0
-        # for weight, guide_trace in self._get_training_traces(model, guide, *args, **kwargs):
-        for _ in range(self.num_particles):
-            model_trace = sample_from_prior(model, guide, *args, **kwargs)
-            guide_trace = self._get_matched_trace(model_trace, guide, *args, **kwargs)
+        for model_trace in batch:
+            guide_trace = self._get_matched_trace(model_trace, guide, *self.args, **self.kwargs)
 
-            particle_loss = -guide_trace.log_pdf() / self.num_particles
+            particle_loss = -guide_trace.log_pdf() / batch_size
 
-            # get gradients
-            torch_backward(particle_loss)
+            if grads:
+                torch_backward(particle_loss)
 
             loss += particle_loss.data.numpy()[0]
 
         if np.isnan(loss):
             warnings.warn('Encountered NAN loss')
-        return loss
-
-    def validation_loss(self, validation_traces, guide, *args, **kwargs):
-        """
-        :returns: returns an estimate of the loss (expectation over p of -log q)
-        :rtype: float
-
-        Estimates loss using the validation batch
-        """
-        loss = 0
-        for model_trace in validation_traces:
-            guide_trace = self._get_matched_trace(model_trace, guide, *args, **kwargs)
-
-            particle_loss = -guide_trace.log_pdf() / len(validation_traces)
-
-            loss += particle_loss.data.numpy()[0]
-
         return loss
