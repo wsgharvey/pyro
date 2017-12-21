@@ -27,7 +27,7 @@ class CSIS(Importance):
         """
         set the arguments to be used when compiling the model
 
-        I think these should default to None in the initialiser
+        TODO: I think these should default to None in the initialiser
         """
         self.model_args = args
         self.model_kwargs = kwargs
