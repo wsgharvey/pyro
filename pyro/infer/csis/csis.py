@@ -80,6 +80,14 @@ class CSIS(Importance):
         optim.zero_grad()
 
         for _ in range(num_steps):
+            optim.zero_grad()
+            training_loss = loss.loss(self.model,
+                                      self.guide,
+                                      grads=True)
+            optim.step()
+            print("LOSS: {}".format(training_loss))
+            self.training_losses.append(training_loss)
+            self.iterations += 1
             if self.iterations % self.valid_frequency == 0:
                 valid_loss = loss.loss(self.model,
                                        self.guide,
@@ -88,16 +96,6 @@ class CSIS(Importance):
                 self.valid_losses.append(valid_loss)
                 print("                                     VALIDATION LOSS IS {}".format(valid_loss))
 
-            optim.zero_grad()
-            training_loss = loss.loss(self.model,
-                                      self.guide,
-                                      grads=True)
-            optim.step()
-
-            print("LOSS: {}".format(training_loss))
-            self.training_losses.append(training_loss)
-
-            self.iterations += 1
 
     def sample_from_prior(self):
         """
