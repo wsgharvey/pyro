@@ -32,7 +32,6 @@ class UniformProposal(Uniform):
             raise ValueError("Expected a.size() == mode.size(), but got {} vs {}".format(a.size(), mode.size()))
         if a.size() != certainty.size():
             raise ValueError("Expected a.size() == certainty.size(), but got {} vs {}".format(a.size(), certainty.size()))
-        print("a, b, mode, certainty:", a, b, mode, certainty)
         normalised_mode = (mode-a) / (b-a)
         normalised_certainty = certainty + 2
         self.beta = Beta(normalised_mode * (normalised_certainty - 2),
@@ -51,10 +50,7 @@ class UniformProposal(Uniform):
         Ref: :py:meth:`pyro.distributions.distribution.Distribution.batch_log_pdf`
         """
         uniform_pdf = super(UniformProposal, self).batch_log_pdf(x)
-        print("X:", x)
-        print("normalised X:", (x-self.a)/(self.b-self.a))
         normalised_beta_pdf = self.beta.batch_log_pdf((x-self.a)/(self.b-self.a))
-        print("pdfs: {}, {}".format(uniform_pdf, normalised_beta_pdf))
         return normalised_beta_pdf + uniform_pdf
 
     def analytic_mean(self):

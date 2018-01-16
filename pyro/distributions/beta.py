@@ -26,7 +26,6 @@ class Beta(Distribution):
     def __init__(self, alpha, beta, batch_size=None, *args, **kwargs):
         self.alpha = alpha
         self.beta = beta
-        print("a, b:", alpha, beta)
         if alpha.size() != beta.size():
             raise ValueError("Expected alpha.size() == beta.size(), but got {} vs {}".format(alpha.size(), beta.size()))
         if alpha.dim() == 1 and beta.dim() == 1 and batch_size is not None:
