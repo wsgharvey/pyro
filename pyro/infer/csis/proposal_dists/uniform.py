@@ -36,7 +36,7 @@ class UniformProposal(Uniform):
         normalised_certainty = certainty + 2
         self.beta = Beta(normalised_mode * (normalised_certainty-2),
                          (normalised_mode-1) * (normalised_certainty-2))
-        super(UniformProposal, self).__init__(*args, **kwargs)  # this aint right
+        super(UniformProposal, self).__init__(a, b, batch_size, *args, **kwargs)
 
     def sample(self):
         """
@@ -49,9 +49,9 @@ class UniformProposal(Uniform):
         """
         Ref: :py:meth:`pyro.distributions.distribution.Distribution.batch_log_pdf`
         """
-        uniform_pdf = super(Uniform, self).batch_log_pdf(x)
+        uniform_pdf = super(UniformProposal, self).batch_log_pdf(x)
         normalised_beta_pdf = self.beta.batch_log_pdf(x)
-        return normalised_pdf + uniform_pdf
+        return normalised_beta_pdf + uniform_pdf
 
     def analytic_mean(self):
         """
