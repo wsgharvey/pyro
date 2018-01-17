@@ -77,8 +77,8 @@ class CSIS(Importance):
 
         loss = Loss(self.model,
                     self.guide,
-                    args=self.model_args,
-                    kwargs=self.model_kwargs,
+                    self.model_args,
+                    self.model_kwargs,
                     self.num_particles,
                     cuda)
         optim.zero_grad()

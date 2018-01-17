@@ -20,7 +20,7 @@ class Loss(object):
     """
     def __init__(self,
                  model,
-                 guide
+                 guide,
                  args,
                  kwargs,
                  num_particles,
