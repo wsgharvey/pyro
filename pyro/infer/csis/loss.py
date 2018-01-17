@@ -12,45 +12,44 @@ from pyro.infer.csis.util import sample_from_prior
 
 import numpy as np
 
-"""
-should provide methods to calculate loss over 1 - a number of random draws from p
-                            2 - a provided batch of traces
-and either calculate gradients or not bother
-
-probably fine how it is unless it can be made a little neater - I think this functionality could be combined into one overall loss function
-"""
-
 
 class Loss(object):
     """
-    An object to calculate an estiamte of the loss and gradients for inference
-    compilation
+    An object to calculate an estimate of the loss (and gradients if desired)
+    for inference compilation
     """
     def __init__(self,
+                 model,
+                 guide
                  args,
                  kwargs,
-                 num_particles):
+                 num_particles,
+                 cuda):
         """
         :num_particles: the number of particles to use for estimating the loss
         """
-        # TODO: maybe put model and guide in __init__
-        # put args/kwargs here too?
         super(Loss, self).__init__()
-        self.num_particles = num_particles
+        self.model = model
+        self.guide = guide
         self.args = args
         self.kwargs = kwargs
+        self.num_particles = num_particles
+        self.cuda = cuda
 
-    def _get_matched_trace(self, model_trace, guide, *args, **kwargs):
+    def _get_matched_trace(self, model_trace, guide):
         """
             takes in a trace from the model and returns a trace of the guide, with
             observed values used as arguments and samples restricted to be the same
             as in the model trace
         """
-        # set arguments to be observed values
+        updated_kwargs = self.kwargs
         for name in model_trace.observation_nodes:
-            kwargs[name] = model_trace.nodes[name]["value"]
+            if not self.cuda:
+                updated_kwargs[name] = model_trace.nodes[name]["value"]
+            else:
+                updated_kwargs[name] = model_trace.nodes[name]["value"].cuda()
 
-        guide_trace = poutine.trace(poutine.replay(guide, model_trace)).get_trace(*args, **kwargs)
+        guide_trace = poutine.trace(poutine.replay(guide, model_trace)).get_trace(*self.args, **updated_kwargs)
 
         check_model_guide_match(model_trace, guide_trace)
         guide_trace = prune_subsample_sites(guide_trace)
@@ -69,7 +68,7 @@ class Loss(object):
         If a batch is provided, the loss is estimated using these traces
         Otherwise, num_samples traces are generated
 
-        If grads is True, will also calculate gradients
+        If grads is True, will also call `torch_backward` on loss
         """
         if batch is None:
             batch = (sample_from_prior(model, *self.args, **self.kwargs) for _ in range(self.num_particles))

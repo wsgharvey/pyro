@@ -6,9 +6,7 @@ import pyro.poutine as poutine
 
 def sample_from_prior(model, *args, **kwargs):
     """
-        returns traces from the prior with values sampled at observes
-
-        TODO: find a good home for this functions
+    returns traces from the prior with values sampled at observes
     """
 
     model_trace = poutine.trace(model).get_trace(*args, **kwargs)

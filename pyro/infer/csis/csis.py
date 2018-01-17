@@ -25,9 +25,8 @@ class CSIS(Importance):
 
     def set_model_args(self, *args, **kwargs):
         """
+        must be called before running `compile` (even with no arguments)
         set the arguments to be used when compiling the model
-
-        TODO: I think these should default to None in the initialiser
         """
         self.model_args = args
         self.model_kwargs = kwargs
@@ -38,7 +37,8 @@ class CSIS(Importance):
                           valid_frequency=10,
                           num_particles=10):
         """
-        set the compiler properties
+        set the compiler properties - if not called before `compile`, defaults
+        will be used
         """
         self.valid_size = valid_size
         self.valid_frequency = valid_frequency
@@ -66,7 +66,8 @@ class CSIS(Importance):
 
     def compile(self,
                 optim,
-                num_steps):
+                num_steps,
+                cuda=False):
         """
         :returns: None
         Does some training steps
@@ -74,9 +75,12 @@ class CSIS(Importance):
         if not self.compiler_initiated:
             self._init_compiler()
 
-        loss = Loss(num_particles=self.num_particles,
+        loss = Loss(self.model,
+                    self.guide,
                     args=self.model_args,
-                    kwargs=self.model_kwargs)
+                    kwargs=self.model_kwargs,
+                    self.num_particles,
+                    cuda)
         optim.zero_grad()
 
         for _ in range(num_steps):
@@ -96,10 +100,9 @@ class CSIS(Importance):
                 self.valid_losses.append(valid_loss)
                 print("                                     VALIDATION LOSS IS {}".format(valid_loss))
 
-
     def sample_from_prior(self):
         """
-        returns a trace sampled from the prior, without coniditioning
+        returns a trace sampled from the prior, without conditioning
         - values at observe statements are also randomly sampled from the
           distribution
         """
