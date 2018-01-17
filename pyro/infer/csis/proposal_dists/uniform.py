@@ -42,7 +42,7 @@ class UniformProposal(Uniform):
         """
         Ref: :py:meth:`pyro.distributions.distribution.Distribution.sample`
         """
-        eps = self.beta.sample()
+        eps = self.beta.sample() 
         return self.a + torch.mul(eps, self.b - self.a)
 
     def batch_log_pdf(self, x):

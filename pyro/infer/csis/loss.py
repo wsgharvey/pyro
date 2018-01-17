@@ -78,7 +78,7 @@ class Loss(object):
 
         loss = 0
         for model_trace in batch:
-            guide_trace = self._get_matched_trace(model_trace, guide, *self.args, **self.kwargs)
+            guide_trace = self._get_matched_trace(model_trace, guide)
 
             particle_loss = -guide_trace.log_pdf() / batch_size
 
