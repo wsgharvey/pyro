@@ -97,8 +97,15 @@ class CSIS(Importance):
                                        self.guide,
                                        grads=False,
                                        batch=self.valid_batch)
-                self.valid_losses.append(valid_loss)
+                self.valid_losses.append((num_steps, valid_loss))
                 print("                                     VALIDATION LOSS IS {}".format(valid_loss))
+
+    def get_compile_log(self):
+        """
+        returns object with information about losses etc.
+        """
+        return {"validation": self.valid_losses,
+                "training": list(enumerate(training_losses))}
 
     def sample_from_prior(self):
         """
