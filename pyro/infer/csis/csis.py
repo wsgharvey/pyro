@@ -105,7 +105,7 @@ class CSIS(Importance):
         returns object with information about losses etc.
         """
         return {"validation": self.valid_losses,
-                "training": list(enumerate(training_losses))}
+                "training": list(enumerate(self.training_losses))}
 
     def sample_from_prior(self):
         """
