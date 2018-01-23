@@ -10,6 +10,8 @@ from pyro.poutine.util import prune_subsample_sites
 from pyro.util import check_model_guide_match
 from pyro.infer.csis.util import sample_from_prior
 
+from multiprocessing import Pool
+
 import numpy as np
 
 
@@ -71,15 +73,24 @@ class Loss(object):
         If grads is True, will also call `torch_backward` on loss
         """
         if batch is None:
-            batch = (sample_from_prior(model, *self.args, **self.kwargs) for _ in range(self.num_particles))
             batch_size = self.num_particles
         else:
             batch_size = len(batch)
 
-        loss = 0
-        for model_trace in batch:
-            guide_trace = self._get_matched_trace(model_trace, guide)
+        pool = Pool()
 
+        loss = 0
+        for i in range(batch_size):
+            if batch is None:
+                try:
+                    model_trace = next_trace.get()
+                except NameError:
+                    sample_from_prior(model, *self.args, **self.kwargs)
+                next_trace = pool.get_async(sample_from_prior, [model, *self.args, **self.kwargs])
+            else:
+                model_trace = batch[i]
+
+            guide_trace = self._get_matched_trace(model_trace, guide)
             particle_loss = -guide_trace.log_pdf() / batch_size
 
             if grads:
