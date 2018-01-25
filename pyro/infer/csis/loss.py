@@ -74,6 +74,8 @@ class Loss(object):
         """
         if batch is None:
             batch_size = self.num_particles
+            def get_trace():
+                return sample_from_prior(model, *self.args, **self.kwargs)
         else:
             batch_size = len(batch)
 
@@ -85,8 +87,8 @@ class Loss(object):
                 try:
                     model_trace = next_trace.get()
                 except NameError:
-                    sample_from_prior(model, *self.args, **self.kwargs)
-                next_trace = pool.get_async(sample_from_prior, [model, *self.args, **self.kwargs])
+                    model_trace = get_trace()
+                next_trace = pool.apply_async(get_trace)
             else:
                 model_trace = batch[i]
 
