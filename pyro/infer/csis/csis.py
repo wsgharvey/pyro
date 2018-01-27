@@ -83,7 +83,7 @@ class CSIS(Importance):
                     cuda)
         optim.zero_grad()
 
-        for _ in range(num_steps):
+        for _step in range(num_steps):
             optim.zero_grad()
             training_loss = loss.loss(self.model,
                                       self.guide,
@@ -97,7 +97,7 @@ class CSIS(Importance):
                                        self.guide,
                                        grads=False,
                                        batch=self.valid_batch)
-                self.valid_losses.append((num_steps, valid_loss))
+                self.valid_losses.append((_step, valid_loss))
                 print("                                     VALIDATION LOSS IS {}".format(valid_loss))
 
     def get_compile_log(self):
@@ -105,7 +105,7 @@ class CSIS(Importance):
         returns object with information about losses etc.
         """
         return {"validation": self.valid_losses,
-                "training": list(enumerate(training_losses))}
+                "training": list(enumerate(self.training_losses))}
 
     def sample_from_prior(self):
         """
