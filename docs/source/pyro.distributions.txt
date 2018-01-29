@@ -13,6 +13,13 @@ Beta
     :undoc-members:
     :show-inheritance:
 
+Binomial
+--------
+.. automodule:: pyro.distributions.binomial
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Categorical
 -----------
 .. automodule:: pyro.distributions.categorical
@@ -38,6 +45,13 @@ Delta
 Normal
 ----------
 .. automodule:: pyro.distributions.normal
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+MultivariateNormal
+------------------
+.. automodule:: pyro.distributions.multivariate_normal
     :members:
     :undoc-members:
     :show-inheritance:
