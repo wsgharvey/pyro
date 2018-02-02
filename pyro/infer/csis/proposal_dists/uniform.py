@@ -34,6 +34,8 @@ class UniformProposal(Uniform):
             raise ValueError("Expected a.size() == mode.size(), but got {} vs {}".format(a.size(), mode.size()))
         if a.size() != certainty.size():
             raise ValueError("Expected a.size() == certainty.size(), but got {} vs {}".format(a.size(), certainty.size()))
+        self.a = a
+        self.b = b
         normalised_mode = (mode-a) / (b-a)
         normalised_certainty = certainty + 2
         self.beta = Beta(normalised_mode * (normalised_certainty - 2),
