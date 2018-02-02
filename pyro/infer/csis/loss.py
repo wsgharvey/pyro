@@ -12,14 +12,6 @@ from pyro.infer.csis.util import sample_from_prior
 
 import numpy as np
 
-"""
-should provide methods to calculate loss over 1 - a number of random draws from p
-                            2 - a provided batch of traces
-and either calculate gradients or not bother
-
-probably fine how it is unless it can be made a little neater - I think this functionality could be combined into one overall loss function
-"""
-
 
 class Loss(object):
     """

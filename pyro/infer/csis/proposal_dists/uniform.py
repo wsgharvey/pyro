@@ -5,9 +5,11 @@ from torch.autograd import Variable
 
 from pyro.distributions.distribution import Distribution
 
-from pyro.distributions.uniform import Uniform
-from pyro.distributions.beta import Beta
+# from pyro.distributions.uniform import Uniform
+# from pyro.distributions.beta import Beta
 
+from pyro.distributions.torch.uniform import Uniform
+from pyro.distributions.torch.beta import Beta
 
 class UniformProposal(Uniform):
     """
@@ -32,10 +34,11 @@ class UniformProposal(Uniform):
             raise ValueError("Expected a.size() == mode.size(), but got {} vs {}".format(a.size(), mode.size()))
         if a.size() != certainty.size():
             raise ValueError("Expected a.size() == certainty.size(), but got {} vs {}".format(a.size(), certainty.size()))
-        normalised_mode = (mode-a) / (a-b)
+        print("a, b, mode, certainty:", a, b, mode, certainty)
+        normalised_mode = (mode-a) / (b-a)
         normalised_certainty = certainty + 2
-        self.beta = Beta(normalised_mode * (normalised_certainty-2),
-                         (normalised_mode-1) * (normalised_certainty-2))
+        self.beta = Beta(normalised_mode * (normalised_certainty - 2),
+                         (1 - normalised_mode) * (normalised_certainty - 2))
         super(UniformProposal, self).__init__(a, b, batch_size, *args, **kwargs)
 
     def sample(self):
@@ -45,12 +48,15 @@ class UniformProposal(Uniform):
         eps = self.beta.sample()
         return self.a + torch.mul(eps, self.b - self.a)
 
-    def batch_log_pdf(self, x):
+    def batch_log_pdf(self, x):  # should probably implement 'log_prob' instead
         """
         Ref: :py:meth:`pyro.distributions.distribution.Distribution.batch_log_pdf`
         """
         uniform_pdf = super(UniformProposal, self).batch_log_pdf(x)
-        normalised_beta_pdf = self.beta.batch_log_pdf(x)
+        print("X:", x)
+        print("normalised X:", (x-self.a)/(self.b-self.a))
+        normalised_beta_pdf = self.beta.batch_log_pdf((x-self.a)/(self.b-self.a))
+        print("pdfs: {}, {}".format(uniform_pdf, normalised_beta_pdf))
         return normalised_beta_pdf + uniform_pdf
 
     def analytic_mean(self):

@@ -15,8 +15,6 @@ class CSIS(Importance):
                  num_samples):
         """
         Constructor
-
-        the entered *args and **kwargs are used during compilation
         """
         super(CSIS, self).__init__(model, guide, num_samples)
         self.model_args_set = False
@@ -36,7 +34,7 @@ class CSIS(Importance):
     def set_compiler_args(self,
                           valid_size=10,
                           valid_frequency=10,
-                          num_particles=10):
+                          num_particles=8):
         """
         set the compiler properties
         """
@@ -95,7 +93,6 @@ class CSIS(Importance):
                                        batch=self.valid_batch)
                 self.valid_losses.append(valid_loss)
                 print("                                     VALIDATION LOSS IS {}".format(valid_loss))
-
 
     def sample_from_prior(self):
         """
