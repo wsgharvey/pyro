@@ -23,9 +23,8 @@ class CSIS(Importance):
 
     def set_model_args(self, *args, **kwargs):
         """
+        must be called before running `compile` (even with no arguments)
         set the arguments to be used when compiling the model
-
-        TODO: I think these should default to None in the initialiser
         """
         self.model_args = args
         self.model_kwargs = kwargs
@@ -34,9 +33,10 @@ class CSIS(Importance):
     def set_compiler_args(self,
                           valid_size=10,
                           valid_frequency=10,
-                          num_particles=8):
+                          num_particles=10):
         """
-        set the compiler properties
+        set the compiler properties - if not called before `compile`, defaults
+        will be used
         """
         self.valid_size = valid_size
         self.valid_frequency = valid_frequency
@@ -64,7 +64,8 @@ class CSIS(Importance):
 
     def compile(self,
                 optim,
-                num_steps):
+                num_steps,
+                cuda=False):
         """
         :returns: None
         Does some training steps
@@ -72,12 +73,15 @@ class CSIS(Importance):
         if not self.compiler_initiated:
             self._init_compiler()
 
-        loss = Loss(num_particles=self.num_particles,
-                    args=self.model_args,
-                    kwargs=self.model_kwargs)
+        loss = Loss(self.model,
+                    self.guide,
+                    self.model_args,
+                    self.model_kwargs,
+                    self.num_particles,
+                    cuda)
         optim.zero_grad()
 
-        for _ in range(num_steps):
+        for _step in range(num_steps):
             optim.zero_grad()
             training_loss = loss.loss(self.model,
                                       self.guide,
@@ -91,12 +95,19 @@ class CSIS(Importance):
                                        self.guide,
                                        grads=False,
                                        batch=self.valid_batch)
-                self.valid_losses.append(valid_loss)
+                self.valid_losses.append((_step, valid_loss))
                 print("                                     VALIDATION LOSS IS {}".format(valid_loss))
+
+    def get_compile_log(self):
+        """
+        returns object with information about losses etc.
+        """
+        return {"validation": self.valid_losses,
+                "training": list(enumerate(self.training_losses))}
 
     def sample_from_prior(self):
         """
-        returns a trace sampled from the prior, without coniditioning
+        returns a trace sampled from the prior, without conditioning
         - values at observe statements are also randomly sampled from the
           distribution
         """
