@@ -49,12 +49,9 @@ class UniformProposal(Uniform):
         eps = self.beta.sample()
         return self.a + torch.mul(eps, self.b - self.a)
 
-    def batch_log_pdf(self, x):
-        """
-        Ref: :py:meth:`pyro.distributions.distribution.Distribution.batch_log_pdf`
-        """
-        uniform_pdf = super(UniformProposal, self).batch_log_pdf(x)
-        normalised_beta_pdf = self.beta.batch_log_pdf((x-self.a)/(self.b-self.a))
+    def log_prob(self, x):
+        uniform_pdf = super(UniformProposal, self).log_prob(x)
+        normalised_beta_pdf = self.beta.log_prob((x-self.a)/(self.b-self.a))
         return normalised_beta_pdf + uniform_pdf
 
     def analytic_mean(self):
