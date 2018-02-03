@@ -44,10 +44,7 @@ class Loss(object):
         """
         updated_kwargs = self.kwargs
         for name in model_trace.observation_nodes:
-            if not self.cuda:
-                updated_kwargs[name] = model_trace.nodes[name]["value"]
-            else:
-                updated_kwargs[name] = model_trace.nodes[name]["value"].cuda()
+            updated_kwargs[name] = model_trace.nodes[name]["value"]
 
         guide_trace = poutine.trace(poutine.replay(guide, model_trace)).get_trace(*self.args, **updated_kwargs)
 

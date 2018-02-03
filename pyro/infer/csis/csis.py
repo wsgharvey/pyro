@@ -95,7 +95,7 @@ class CSIS(Importance):
                                        self.guide,
                                        grads=False,
                                        batch=self.valid_batch)
-                self.valid_losses.append((_step, valid_loss))
+                self.valid_losses.append((self.iterations, valid_loss))
                 print("                                     VALIDATION LOSS IS {}".format(valid_loss))
 
     def get_compile_log(self):
