@@ -42,11 +42,11 @@ class UniformProposal(Uniform):
                          (1 - normalised_mode) * (normalised_certainty - 2))
         super(UniformProposal, self).__init__(a, b, batch_size, *args, **kwargs)
 
-    def sample(self):
+    def sample(self, sample_shape=torch.Size()):
         """
         Ref: :py:meth:`pyro.distributions.distribution.Distribution.sample`
         """
-        eps = self.beta.sample()
+        eps = self.beta.sample(sample_shape=sample_shape)
         return self.a + torch.mul(eps, self.b - self.a)
 
     def log_prob(self, x):
