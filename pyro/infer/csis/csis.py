@@ -70,6 +70,7 @@ class CSIS(Importance):
         :returns: None
         Does some training steps
         """
+        self.optim = optim
         if not self.compiler_initiated:
             self._init_compiler()
 
@@ -79,14 +80,13 @@ class CSIS(Importance):
                     self.model_kwargs,
                     self.num_particles,
                     cuda)
-        optim.zero_grad()
 
         for _step in range(num_steps):
-            optim.zero_grad()
+            self.optim.zero_grad()
             training_loss = loss.loss(self.model,
                                       self.guide,
                                       grads=True)
-            optim.step()
+            self.optim.step()
             print("LOSS: {}".format(training_loss))
             self.training_losses.append(training_loss)
             self.iterations += 1
@@ -104,6 +104,9 @@ class CSIS(Importance):
         """
         return {"validation": self.valid_losses,
                 "training": list(enumerate(self.training_losses))}
+
+    def get_last_optim(self):
+        return self.optim
 
     def sample_from_prior(self):
         """

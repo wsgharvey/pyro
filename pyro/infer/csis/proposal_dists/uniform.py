@@ -5,11 +5,9 @@ from torch.autograd import Variable
 
 from pyro.distributions.distribution import Distribution
 
-# from pyro.distributions.uniform import Uniform
-# from pyro.distributions.beta import Beta
-
 from pyro.distributions.torch.uniform import Uniform
 from pyro.distributions.torch.beta import Beta
+
 
 class UniformProposal(Uniform):
     """
