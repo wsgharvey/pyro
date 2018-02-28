@@ -63,16 +63,21 @@ class CSIS(Importance):
         self.compiler_initiated = True
 
     def compile(self,
-                optim,
                 num_steps,
+                optim=None,
                 cuda=False):
         """
+        :num_steps:     Number of iterations to perform
+        :optim:         Torch optimiser object - if None, will use most recent
+
         :returns: None
         Does some training steps
         """
-        self.optim = optim
         if not self.compiler_initiated:
             self._init_compiler()
+
+        if optim is not None:
+            self.optim = optim
 
         loss = Loss(self.model,
                     self.guide,
