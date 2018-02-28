@@ -82,7 +82,7 @@ class Loss(object):
             if grads:
                 torch_backward(particle_loss)
 
-            loss += particle_loss.data.numpy()[0]
+            loss += float(particle_loss)
 
         if np.isnan(loss):
             warnings.warn('Encountered NAN loss')
