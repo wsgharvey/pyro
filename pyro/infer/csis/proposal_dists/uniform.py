@@ -48,9 +48,9 @@ class UniformProposal(Uniform):
         return self.a + torch.mul(eps, self.b - self.a)
 
     def log_prob(self, x):
-        uniform_pdf = super(UniformProposal, self).log_prob(x)
-        normalised_beta_pdf = self.beta.log_prob((x-self.a)/(self.b-self.a))
-        return normalised_beta_pdf + uniform_pdf
+        uniform_log_pdf = super(UniformProposal, self).log_prob(x)
+        normalised_beta_log_pdf = self.beta.log_prob((x-self.a)/(self.b-self.a))
+        return normalised_beta_log_pdf + uniform_log_pdf
 
     def analytic_mean(self):
         """
